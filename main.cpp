@@ -24,8 +24,8 @@ bool criticalSection = false;
 mutex block,cv_m;
 condition_variable cv;
 unique_lock<mutex> ul(cv_m);
-bool isPing = false; //true = lost Ping. Only one true
-bool isPong = true; //true = lost Pong. Only one true
+bool isPing = true; //true = lost Ping. Only one true
+bool isPong = false; //true = lost Pong. Only one true
 int precentLost = 20; //declare percent lost ping or pong
 
 void receivePing(int value);
@@ -89,6 +89,7 @@ void receivePing(int value){
     }
     else {
         cout<<"Receive ping ["<<value<<"]. Process: "<<world_rank<<endl;
+        block.lock();
         if(m==value){
             cout<<"Regenerate PONG. Process: "<<world_rank<<endl;
             regenerate(value);
@@ -100,6 +101,7 @@ void receivePing(int value){
             regenerate(value);
         }
         criticalSection = true;
+        block.unlock();
         cv.notify_one();
     }
 }
@@ -110,7 +112,7 @@ void receivePong(int value){
     }
         else {
             cout<<"Receive pong ["<<value<<"]. Process: "<<world_rank<<endl;
-            block.lock();
+           block.lock();
             if(criticalSection){
                 cout<<"Incarnate. Process: "<<world_rank<<endl;
                 incarnate(value);
@@ -129,7 +131,7 @@ void receivePong(int value){
             }
     
        
-            block.unlock();
+            
             cv.notify_one();
             if(rand() % 100<precentLost && isPong){
                 saveStatus(pong);
@@ -140,6 +142,7 @@ void receivePong(int value){
                 sendPong(pong);
             
             }
+            block.unlock();
         }
       
    
