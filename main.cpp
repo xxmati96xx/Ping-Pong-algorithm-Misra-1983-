@@ -1,3 +1,11 @@
+//Mateusz Adler 146941
+//Ping-Pong-algorithm-Misra-1983
+//compile:
+//mpic++ main.cpp
+//
+//run:
+//mpirun -np <number of process> a.out
+
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,8 +23,8 @@ int pong = -1;
 int m = 0;
 int world_rank;
 int world_size;
-int MPI_PING = 10;
-int MPI_PONG = 11;
+int MPI_PING = 0;
+int MPI_PONG = 1;
 pthread_t receive_Message_Event;
 int messageReceive;
 int next_process;
@@ -24,8 +32,8 @@ bool criticalSection = false;
 mutex block,cv_m;
 condition_variable cv;
 unique_lock<mutex> ul(cv_m);
-bool isPing = true; //true = lost Ping. Only one true
-bool isPong = false; //true = lost Pong. Only one true
+bool isPing = false; //true = lost Ping. Only one true
+bool isPong = true; //true = lost Pong. Only one true
 int precentLost = 20; //declare percent lost ping or pong
 
 void receivePing(int value);
@@ -44,7 +52,6 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
     messageReceive = pthread_create(&receive_Message_Event,NULL,recieveMessage,NULL);
-
     if(messageReceive){
         cout<<"Error reciever create. Process: "<<world_rank<<endl;
         MPI_Finalize();
@@ -82,7 +89,6 @@ int main(int argc, char** argv) {
 MPI_Finalize();
 }
 
-
 void receivePing(int value){
     if(abs(value)<abs(m)){
         cout<<"Old PING(delete). Process:"<<world_rank<<endl;
@@ -116,7 +122,6 @@ void receivePong(int value){
             if(criticalSection){
                 cout<<"Incarnate. Process: "<<world_rank<<endl;
                 incarnate(value);
-        
             }else if(m==value)
             {
                 cout<<"Regenerate PING. Process: "<<world_rank<<endl;
@@ -127,11 +132,7 @@ void receivePong(int value){
             }else if(m>value)
             {
                 regenerate(value);
-        
             }
-    
-       
-            
             cv.notify_one();
             if(rand() % 100<precentLost && isPong){
                 saveStatus(pong);
@@ -140,14 +141,10 @@ void receivePong(int value){
             {
                 saveStatus(pong);
                 sendPong(pong);
-            
             }
             block.unlock();
         }
-      
-   
 }
-
 
 void regenerate(int value){
     ping = abs(value);
@@ -166,12 +163,12 @@ void saveStatus(int status){
 void *recieveMessage(void *arg){
     while (1)
     {
-       int value;
+        int value;
         MPI_Status stat;
         MPI_Recv(&value,1,MPI_INT,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&stat);
 
         if(stat.MPI_TAG == MPI_PING){
-         receivePing(value);
+            receivePing(value);
         }
         if(stat.MPI_TAG == MPI_PONG){
             receivePong(value);
